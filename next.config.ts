@@ -1,8 +1,8 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ['pdf-parse']
+    serverComponentsExternalPackages: ['pdf-parse'],
   },
   // APIルートのボディサイズ制限を増加
   api: {

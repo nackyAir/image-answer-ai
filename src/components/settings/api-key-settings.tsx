@@ -123,8 +123,8 @@ export function ApiKeySettings() {
   };
 
   return (
-    <Card className="w-full max-w-2xl">
-      <CardHeader>
+    <Card className="w-full border-transparent bg-transparent shadow-none">
+      <CardHeader className="px-0">
         <CardTitle className="flex items-center gap-2">
           <Key className="h-5 w-5" />
           OpenAI APIキー設定
@@ -135,7 +135,7 @@ export function ApiKeySettings() {
           設定しない場合は、システム共通のAPIキーが使用されます。
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 px-0">
         {/* 現在の状態表示 */}
         {apiKeyInfo && (
           <div className="rounded-lg bg-muted p-4">

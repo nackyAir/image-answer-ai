@@ -169,8 +169,11 @@ export async function POST(req: NextRequest) {
 
     const analysis = completion.choices[0]?.message?.content;
 
-    // API使用量をログに記録
-    if (completion.usage) {
+    // ユーザー設定のAPIキーかどうかを確認
+    const isUserOwnApiKey = await apiKeyManager.isUserApiKey(userId);
+
+    // API使用量をログに記録（ユーザー設定のAPIキーの場合はスキップ）
+    if (completion.usage && !isUserOwnApiKey) {
       const cost = calculateCost(completion.usage, 'gpt-4o');
       await apiKeyManager.logUsage(userId, {
         promptTokens: completion.usage.prompt_tokens || 0,
@@ -183,6 +186,10 @@ export async function POST(req: NextRequest) {
 
       console.log(
         `API使用量記録: ${completion.usage.total_tokens} tokens, コスト: $${cost.toFixed(4)}`
+      );
+    } else if (isUserOwnApiKey) {
+      console.log(
+        `ユーザー設定のAPIキーを使用しているため、使用量ログをスキップします: ユーザー ${userId}`
       );
     }
 

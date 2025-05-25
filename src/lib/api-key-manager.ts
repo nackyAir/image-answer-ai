@@ -3,6 +3,7 @@ import { decryptApiKey } from './crypto';
 
 export interface ApiKeyManager {
   getApiKey(userId?: string): Promise<string>;
+  isUserApiKey(userId: string): Promise<boolean>;
   logUsage(
     userId: string,
     usage: {
@@ -241,6 +242,34 @@ class ApiKeyManagerImpl implements ApiKeyManager {
       db.close();
     } catch (error) {
       console.error('API使用ログの記録に失敗しました:', error);
+    }
+  }
+
+  async isUserApiKey(userId: string): Promise<boolean> {
+    try {
+      const db = new Database('./db.sqlite');
+      const user = db
+        .prepare(
+          'SELECT hasApiKey, openaiApiKeyEncrypted FROM user WHERE id = ?'
+        )
+        .get(userId) as
+        | {
+            hasApiKey: boolean;
+            openaiApiKeyEncrypted: string | null;
+          }
+        | undefined;
+
+      db.close();
+
+      // ユーザーが見つからない、またはAPIキーが設定されていない場合はfalse
+      if (!user || !user.hasApiKey || !user.openaiApiKeyEncrypted) {
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('ユーザーAPIキー判別中にエラーが発生しました:', error);
+      return false;
     }
   }
 }

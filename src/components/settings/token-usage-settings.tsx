@@ -20,8 +20,8 @@ export function TokenUsageSettings() {
   };
 
   return (
-    <Card className="w-full max-w-2xl">
-      <CardHeader>
+    <Card className="w-full border-transparent bg-transparent shadow-none">
+      <CardHeader className="px-0">
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
@@ -42,7 +42,7 @@ export function TokenUsageSettings() {
           使用量はアカウントに保存され、ログイン時に復元されます。
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-0">
         <TokenStatus
           usage={tokenUsage}
           showDetailed={true}

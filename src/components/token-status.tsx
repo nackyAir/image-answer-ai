@@ -1,5 +1,11 @@
 'use client';
-import { AlertTriangle, CheckCircle2, Zap } from 'lucide-react';
+import {
+  AlertTriangle,
+  Calendar,
+  CheckCircle2,
+  CreditCard,
+  Zap,
+} from 'lucide-react';
 import { Badge } from '~/components/ui/badge';
 import { cn } from '~/lib/utils';
 
@@ -8,24 +14,36 @@ interface TokenUsageData {
   completionTokens: number;
   totalTokens: number;
   sessionTokens: number;
+  // 永続化されたデータ
+  totalPromptTokens: number;
+  totalCompletionTokens: number;
+  totalAllTimeTokens: number;
+  totalCost: number;
+  dailyTokens: number;
+  dailyTokensResetAt: string;
 }
 
 interface TokenStatusProps {
   usage?: TokenUsageData;
   maxTokensPerDay?: number;
   className?: string;
+  showDetailed?: boolean;
 }
 
-const DEFAULT_MAX_TOKENS = 100000; // 1日あたりのデフォルト上限
+const DEFAULT_MAX_TOKENS = 50000; // 1日あたりのデフォルト上限
 
 export function TokenStatus({
   usage,
   maxTokensPerDay = DEFAULT_MAX_TOKENS,
   className,
+  showDetailed = false,
 }: TokenStatusProps) {
-  // 使用状況の計算
-  const currentUsage = usage?.sessionTokens ?? 0;
-  const usagePercentage = Math.min((currentUsage / maxTokensPerDay) * 100, 100);
+  // 日次使用量を基準にステータスを判定
+  const currentDailyUsage = usage?.dailyTokens ?? 0;
+  const usagePercentage = Math.min(
+    (currentDailyUsage / maxTokensPerDay) * 100,
+    100
+  );
 
   // ステータスの判定
   const getStatusInfo = () => {
@@ -58,10 +76,18 @@ export function TokenStatus({
 
   // 数値のフォーマット
   const formatTokenCount = (count: number): string => {
+    if (count >= 1000000) {
+      return `${(count / 1000000).toFixed(1)}M`;
+    }
     if (count >= 1000) {
       return `${(count / 1000).toFixed(1)}K`;
     }
     return count.toLocaleString();
+  };
+
+  // コストのフォーマット
+  const formatCost = (cost: number): string => {
+    return `$${cost.toFixed(4)}`;
   };
 
   // プログレスバーの色を動的に設定
@@ -71,6 +97,103 @@ export function TokenStatus({
     return 'bg-red-500';
   };
 
+  if (showDetailed && usage) {
+    // 詳細表示モード（設定ページ用）
+    return (
+      <div className={cn('space-y-4', className)}>
+        {/* 日次使用量 */}
+        <div className="rounded-lg border border-gray-200 bg-white/60 p-4 backdrop-blur-sm">
+          <div className="mb-3 flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-blue-600" />
+            <h3 className="font-medium text-gray-900">本日の使用量</h3>
+          </div>
+
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-gray-600 text-sm">
+              {formatTokenCount(currentDailyUsage)} /{' '}
+              {formatTokenCount(maxTokensPerDay)} トークン
+            </span>
+            <Badge
+              variant="outline"
+              className={cn(
+                'text-xs',
+                status.color === 'emerald' &&
+                  'border-emerald-300 bg-emerald-50 text-emerald-700',
+                status.color === 'amber' &&
+                  'border-amber-300 bg-amber-50 text-amber-700',
+                status.color === 'red' &&
+                  'border-red-300 bg-red-50 text-red-700'
+              )}
+            >
+              {status.label}
+            </Badge>
+          </div>
+
+          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all duration-300 ease-out',
+                getProgressColor()
+              )}
+              style={{ width: `${usagePercentage}%` }}
+            />
+          </div>
+        </div>
+
+        {/* 累計使用量 */}
+        <div className="rounded-lg border border-gray-200 bg-white/60 p-4 backdrop-blur-sm">
+          <div className="mb-3 flex items-center gap-2">
+            <Zap className="h-5 w-5 text-purple-600" />
+            <h3 className="font-medium text-gray-900">累計使用量</h3>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <div className="text-gray-600">プロンプト</div>
+              <div className="font-medium">
+                {formatTokenCount(usage.totalPromptTokens)}
+              </div>
+            </div>
+            <div>
+              <div className="text-gray-600">補完</div>
+              <div className="font-medium">
+                {formatTokenCount(usage.totalCompletionTokens)}
+              </div>
+            </div>
+            <div>
+              <div className="text-gray-600">合計</div>
+              <div className="font-medium">
+                {formatTokenCount(usage.totalAllTimeTokens)}
+              </div>
+            </div>
+            <div>
+              <div className="text-gray-600">セッション</div>
+              <div className="font-medium">
+                {formatTokenCount(usage.sessionTokens)}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* コスト情報 */}
+        <div className="rounded-lg border border-gray-200 bg-white/60 p-4 backdrop-blur-sm">
+          <div className="mb-3 flex items-center gap-2">
+            <CreditCard className="h-5 w-5 text-green-600" />
+            <h3 className="font-medium text-gray-900">コスト</h3>
+          </div>
+
+          <div className="text-center">
+            <div className="font-bold text-2xl text-gray-900">
+              {formatCost(usage.totalCost)}
+            </div>
+            <div className="text-gray-600 text-sm">累計コスト</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // コンパクト表示モード（ヘッダー用）
   return (
     <div
       className={cn(
@@ -123,7 +246,7 @@ export function TokenStatus({
             {status.label}
           </Badge>
           <span className="truncate text-gray-600 text-xs">
-            {formatTokenCount(currentUsage)} /{' '}
+            {formatTokenCount(currentDailyUsage)} /{' '}
             {formatTokenCount(maxTokensPerDay)}
           </span>
         </div>
@@ -144,8 +267,8 @@ export function TokenStatus({
       {usage && (
         <div className="hidden lg:block">
           <div className="text-right text-gray-500 text-xs">
-            <div>入力: {formatTokenCount(usage.promptTokens)}</div>
-            <div>出力: {formatTokenCount(usage.completionTokens)}</div>
+            <div>セッション: {formatTokenCount(usage.sessionTokens)}</div>
+            <div>累計: {formatTokenCount(usage.totalAllTimeTokens)}</div>
           </div>
         </div>
       )}

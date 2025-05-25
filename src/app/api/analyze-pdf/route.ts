@@ -1,16 +1,44 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import type { ChatCompletion } from 'openai/resources/chat/completions';
+import { apiKeyManager } from '~/lib/api-key-manager';
+import { auth } from '~/lib/auth';
+
+interface OpenAIUsage {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+}
 
 export async function POST(req: NextRequest) {
   try {
     console.log('PDF解析API開始');
 
-    // OpenAI API キーの確認
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('OPENAI_API_KEY環境変数が設定されていません');
+    // ユーザー認証チェック
+    const session = await auth.api.getSession({ headers: req.headers });
+
+    if (!session || !session.user) {
+      console.error('認証されていないリクエスト');
+      return NextResponse.json(
+        {
+          error: '認証が必要です。ログインしてください。',
+          code: 'UNAUTHORIZED',
+        },
+        { status: 401 }
+      );
+    }
+
+    const userId = session.user.id;
+    console.log(`ユーザー ${userId} がPDF解析をリクエスト`);
+
+    // ユーザーのAPIキーを取得
+    const apiKey = await apiKeyManager.getApiKey(userId);
+
+    if (!apiKey) {
+      console.error('使用可能なAPIキーがありません');
       return NextResponse.json(
         {
           error:
-            'OpenAI API keyが設定されていません。環境変数を確認してください。',
+            'OpenAI APIキーが設定されていません。設定ページでAPIキーを設定するか、管理者にお問い合わせください。',
           code: 'MISSING_API_KEY',
         },
         { status: 500 }
@@ -18,7 +46,7 @@ export async function POST(req: NextRequest) {
     }
 
     // OpenAIのインポートを動的に行う
-    let OpenAI;
+    let OpenAI: typeof import('openai').OpenAI;
     try {
       const openaiModule = await import('openai');
       OpenAI = openaiModule.OpenAI;
@@ -35,7 +63,7 @@ export async function POST(req: NextRequest) {
     }
 
     // pdf-parseのインポートを動的に行う
-    let pdf;
+    let pdf: (buffer: Buffer) => Promise<{ text: string }>;
     try {
       pdf = (await import('pdf-parse')).default;
       console.log('pdf-parseモジュールのインポート成功');
@@ -51,7 +79,7 @@ export async function POST(req: NextRequest) {
     }
 
     const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: apiKey,
     });
 
     const formData = await req.formData();
@@ -74,7 +102,7 @@ export async function POST(req: NextRequest) {
     const buffer = await file.arrayBuffer();
     console.log('ファイルをバッファに変換完了');
 
-    let data;
+    let data: { text: string };
     try {
       data = await pdf(Buffer.from(buffer));
       console.log(`PDF解析完了: ${data.text.length}文字のテキストを抽出`);
@@ -107,7 +135,7 @@ export async function POST(req: NextRequest) {
     console.log('OpenAI APIリクエスト開始');
 
     // OpenAIでPDFの内容を要約・構造化
-    let completion;
+    let completion: ChatCompletion;
     try {
       completion = await openai.chat.completions.create({
         model: 'gpt-4o',
@@ -141,6 +169,23 @@ export async function POST(req: NextRequest) {
 
     const analysis = completion.choices[0]?.message?.content;
 
+    // API使用量をログに記録
+    if (completion.usage) {
+      const cost = calculateCost(completion.usage, 'gpt-4o');
+      await apiKeyManager.logUsage(userId, {
+        promptTokens: completion.usage.prompt_tokens || 0,
+        completionTokens: completion.usage.completion_tokens || 0,
+        totalTokens: completion.usage.total_tokens || 0,
+        cost: cost,
+        apiEndpoint: '/api/analyze-pdf',
+        requestType: 'pdf_analysis',
+      });
+
+      console.log(
+        `API使用量記録: ${completion.usage.total_tokens} tokens, コスト: $${cost.toFixed(4)}`
+      );
+    }
+
     console.log('PDF解析処理完了');
 
     return NextResponse.json({
@@ -149,6 +194,7 @@ export async function POST(req: NextRequest) {
       analysis: analysis,
       wordCount: text.split(' ').length,
       usage: completion.usage, // トークン使用量を追加
+      userId: userId, // デバッグ用（本番では削除可能）
     });
   } catch (error) {
     console.error('予期しないエラー:', error);
@@ -161,4 +207,30 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// OpenAI API使用料金計算関数
+function calculateCost(usage: OpenAIUsage, model: string): number {
+  const pricing = {
+    'gpt-4o': {
+      input: 0.005 / 1000, // $0.005 per 1K input tokens
+      output: 0.015 / 1000, // $0.015 per 1K output tokens
+    },
+    'gpt-4': {
+      input: 0.03 / 1000, // $0.03 per 1K input tokens
+      output: 0.06 / 1000, // $0.06 per 1K output tokens
+    },
+    'gpt-3.5-turbo': {
+      input: 0.001 / 1000, // $0.001 per 1K input tokens
+      output: 0.002 / 1000, // $0.002 per 1K output tokens
+    },
+  };
+
+  const modelPricing =
+    pricing[model as keyof typeof pricing] || pricing['gpt-4o'];
+
+  const inputCost = (usage.prompt_tokens || 0) * modelPricing.input;
+  const outputCost = (usage.completion_tokens || 0) * modelPricing.output;
+
+  return inputCost + outputCost;
 }

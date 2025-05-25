@@ -1,8 +1,9 @@
 'use client';
 
-import { Bot, Clock, FileText, User } from 'lucide-react';
+import { Bot, FileText, User } from 'lucide-react';
 import Image from 'next/image';
 import { MarkdownRenderer } from './markdown-renderer';
+import { Loading } from './ui/loading';
 
 export interface Message {
   id: string;
@@ -99,15 +100,13 @@ export function ChatMessage({ message }: ChatMessageProps) {
           {/* メッセージテキスト */}
           <div className="leading-relaxed">
             {isLoading ? (
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <Clock className="h-5 w-5 animate-spin text-blue-500" />
-                  <div className="absolute inset-0 h-5 w-5 animate-ping">
-                    <Clock className="h-5 w-5 text-blue-300" />
-                  </div>
-                </div>
-                <span className="text-gray-600">回答を生成中...</span>
-              </div>
+              <Loading
+                icon="zap"
+                text="回答を生成中..."
+                variant="default"
+                animation="ping"
+                className="text-gray-600"
+              />
             ) : type === 'assistant' ? (
               <MarkdownRenderer content={content} variant="default" />
             ) : (

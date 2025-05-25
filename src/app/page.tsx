@@ -1,11 +1,15 @@
 'use client';
 
-import { Brain, FileText } from 'lucide-react';
+import { Brain, FileText, Settings } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { useAuth } from '~/components/auth/auth-provider';
+import { LogoutButton } from '~/components/auth/logout-button';
 import { ChatInput } from '~/components/chat-input';
 import { ChatMessage, type Message } from '~/components/chat-message';
 import { FileUpload } from '~/components/file-upload';
 import { TokenStatus } from '~/components/token-status';
+import { Button } from '~/components/ui/button';
 import {
   Card,
   CardContent,
@@ -13,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from '~/components/ui/card';
+import { useTokenUsage } from '~/hooks/use-token-usage';
 
 interface PdfAnalysis {
   originalText: string;
@@ -20,27 +25,21 @@ interface PdfAnalysis {
   wordCount: number;
 }
 
-interface TokenUsageData {
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
-  sessionTokens: number;
-}
-
 export default function Home() {
+  const { user, isLoading } = useAuth();
+  const { tokenUsage, updateSessionUsage, resetSession } = useTokenUsage();
   const [messages, setMessages] = useState<Message[]>([]);
   const [pdfAnalysis, setPdfAnalysis] = useState<PdfAnalysis | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showPdfUpload, setShowPdfUpload] = useState(true);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
-  const [tokenUsage, setTokenUsage] = useState<TokenUsageData>({
-    promptTokens: 0,
-    completionTokens: 0,
-    totalTokens: 0,
-    sessionTokens: 0,
-  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // デバッグ情報
+  useEffect(() => {
+    console.log('メインページ認証状態:', { user, isLoading });
+  }, [user, isLoading]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -163,7 +162,7 @@ export default function Home() {
       if (data.success) {
         // トークン使用量を更新（PDF解析時）
         if (data.usage) {
-          updateTokenUsage(data.usage);
+          updateSessionUsage(data.usage);
         }
 
         setPdfAnalysis(data);
@@ -267,7 +266,7 @@ export default function Home() {
         if (data.success) {
           // トークン使用量を更新
           if (data.usage) {
-            updateTokenUsage(data.usage);
+            updateSessionUsage(data.usage);
           }
 
           // 回答メッセージに更新
@@ -320,43 +319,32 @@ export default function Home() {
     }
   };
 
-  const resetChat = () => {
+  const handleResetChat = () => {
     setMessages([]);
     setPdfAnalysis(null);
     setShowPdfUpload(true);
     setIsProcessing(false);
-    // トークン使用量もリセット
-    setTokenUsage({
-      promptTokens: 0,
-      completionTokens: 0,
-      totalTokens: 0,
-      sessionTokens: 0,
-    });
+    // セッション内のトークン使用量のみリセット（累計は保持）
+    resetSession();
   };
 
-  // トークン使用量を更新する関数
-  const updateTokenUsage = (usage: {
-    prompt_tokens?: number;
-    completion_tokens?: number;
-    total_tokens?: number;
-  }) => {
-    const promptTokens = usage.prompt_tokens || 0;
-    const completionTokens = usage.completion_tokens || 0;
-    const totalTokens = usage.total_tokens || promptTokens + completionTokens;
-
-    setTokenUsage((prev) => ({
-      promptTokens: prev.promptTokens + promptTokens,
-      completionTokens: prev.completionTokens + completionTokens,
-      totalTokens: prev.totalTokens + totalTokens,
-      sessionTokens: prev.sessionTokens + totalTokens,
-    }));
-  };
+  // ローディング中は何も表示しない
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        <div className="text-center">
+          <Brain className="mx-auto mb-4 h-12 w-12 animate-pulse text-blue-500" />
+          <p className="text-gray-600">認証状態を確認中...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       {/* ヘッダー */}
       <header className="border-white/20 border-b bg-white/80 shadow-sm backdrop-blur-sm">
-        <div className="mx-auto max-w-6xl px-6 py-4">
+        <div className="mx-auto max-w-6xl px-2 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="relative">
@@ -367,35 +355,64 @@ export default function Home() {
                   <div className="h-2 w-2 rounded-full bg-white"></div>
                 </div>
               </div>
-              <div>
-                <h1 className="bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text font-bold text-transparent text-xl">
-                  AI 画像問題回答システム
-                </h1>
-                <p className="flex items-center gap-2 text-gray-600 text-sm">
-                  <span
-                    className={`inline-block h-2 w-2 rounded-full ${pdfAnalysis ? 'bg-green-400' : 'bg-amber-400'}`}
-                  ></span>
-                  {pdfAnalysis
-                    ? `学習完了 • ${pdfAnalysis.wordCount.toLocaleString()}語のデータを分析済み`
-                    : 'PDFアップロード待ち'}
-                </p>
+              <div className="flex items-center gap-4">
+                <div>
+                  <h1 className="bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text font-bold text-transparent text-xl">
+                    AI 画像問題回答システム
+                  </h1>
+                  <p className="flex items-center gap-2 text-gray-600 text-sm">
+                    <span
+                      className={`inline-block h-2 w-2 rounded-full ${pdfAnalysis ? 'bg-green-400' : 'bg-amber-400'}`}
+                    ></span>
+                    {pdfAnalysis
+                      ? `学習完了 • ${pdfAnalysis.wordCount.toLocaleString()}語のデータを分析済み`
+                      : 'PDFアップロード待ち'}
+                  </p>
+                </div>
                 <TokenStatus
                   usage={tokenUsage}
-                  maxTokensPerDay={100000}
+                  maxTokensPerDay={50000}
                   className="hidden md:flex"
                 />
               </div>
             </div>
 
             <div className="flex items-center gap-4">
+              {/* ユーザー情報表示 */}
+              {user && (
+                <div className="hidden items-center gap-3 md:flex">
+                  <div className="text-right">
+                    <p className="font-medium text-gray-700 text-sm">
+                      {user.name || user.email}
+                    </p>
+                    <p className="text-gray-500 text-xs">ログイン中</p>
+                  </div>
+                </div>
+              )}
+
+              {/* 設定ページリンク */}
+              <Link href="/settings">
+                <Button
+                  variant="outline"
+                  className="border-gray-200/50 hover:bg-white/50"
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  設定
+                </Button>
+              </Link>
+
               {pdfAnalysis && (
-                <button
-                  onClick={resetChat}
+                <Button
+                  variant="default"
+                  onClick={handleResetChat}
                   className="rounded-lg border border-gray-200/50 px-4 py-2 text-gray-600 text-sm transition-all duration-200 hover:bg-white/50 hover:text-gray-800"
                 >
                   新しいセッション
-                </button>
+                </Button>
               )}
+
+              {/* ログアウトボタン */}
+              <LogoutButton className="border-gray-200/50 hover:bg-white/50" />
             </div>
           </div>
         </div>

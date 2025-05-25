@@ -1,7 +1,18 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Loading, LoadingDots, LoadingPulse, LoadingSpinner } from './ui/loading';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from './ui/card';
+import {
+  Loading,
+  LoadingDots,
+  LoadingPulse,
+  LoadingSpinner,
+} from './ui/loading';
 
 export function LoadingDemo() {
   return (
@@ -9,19 +20,21 @@ export function LoadingDemo() {
       <Card>
         <CardHeader>
           <CardTitle>基本的なローディング</CardTitle>
-          <CardDescription>アイコンとテキストを組み合わせたローディング表示</CardDescription>
+          <CardDescription>
+            アイコンとテキストを組み合わせたローディング表示
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <p className="text-sm font-medium">デフォルト（Loader2アイコン）</p>
+            <p className="font-medium text-sm">デフォルト（Loader2アイコン）</p>
             <Loading text="読み込み中..." />
           </div>
           <div className="space-y-2">
-            <p className="text-sm font-medium">時計アイコン</p>
+            <p className="font-medium text-sm">時計アイコン</p>
             <Loading icon="clock" text="処理中..." variant="secondary" />
           </div>
           <div className="space-y-2">
-            <p className="text-sm font-medium">雷アイコン</p>
+            <p className="font-medium text-sm">雷アイコン</p>
             <Loading icon="zap" text="生成中..." variant="success" />
           </div>
         </CardContent>
@@ -34,15 +47,15 @@ export function LoadingDemo() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <p className="text-sm font-medium">スピン（デフォルト）</p>
+            <p className="font-medium text-sm">スピン（デフォルト）</p>
             <Loading animation="spin" text="回転中..." />
           </div>
           <div className="space-y-2">
-            <p className="text-sm font-medium">パルス</p>
+            <p className="font-medium text-sm">パルス</p>
             <Loading animation="pulse" text="点滅中..." variant="warning" />
           </div>
           <div className="space-y-2">
-            <p className="text-sm font-medium">ピング</p>
+            <p className="font-medium text-sm">ピング</p>
             <Loading animation="ping" text="送信中..." variant="destructive" />
           </div>
         </CardContent>
@@ -55,15 +68,15 @@ export function LoadingDemo() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <p className="text-sm font-medium">小</p>
+            <p className="font-medium text-sm">小</p>
             <Loading size="sm" text="小さなローディング" />
           </div>
           <div className="space-y-2">
-            <p className="text-sm font-medium">標準</p>
+            <p className="font-medium text-sm">標準</p>
             <Loading size="default" text="標準サイズ" />
           </div>
           <div className="space-y-2">
-            <p className="text-sm font-medium">大</p>
+            <p className="font-medium text-sm">大</p>
             <Loading size="lg" text="大きなローディング" />
           </div>
         </CardContent>
@@ -76,7 +89,7 @@ export function LoadingDemo() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <p className="text-sm font-medium">スピナー</p>
+            <p className="font-medium text-sm">スピナー</p>
             <div className="flex items-center gap-4">
               <LoadingSpinner size="sm" />
               <LoadingSpinner size="default" />
@@ -84,7 +97,7 @@ export function LoadingDemo() {
             </div>
           </div>
           <div className="space-y-2">
-            <p className="text-sm font-medium">ドット</p>
+            <p className="font-medium text-sm">ドット</p>
             <div className="flex items-center gap-4">
               <LoadingDots size="sm" />
               <LoadingDots size="default" />
@@ -92,7 +105,7 @@ export function LoadingDemo() {
             </div>
           </div>
           <div className="space-y-2">
-            <p className="text-sm font-medium">パルス</p>
+            <p className="font-medium text-sm">パルス</p>
             <div className="flex items-center gap-4">
               <LoadingPulse size="sm" />
               <LoadingPulse size="default" />
@@ -109,7 +122,7 @@ export function LoadingDemo() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <p className="text-sm font-medium">チャットメッセージでの使用</p>
+            <p className="font-medium text-sm">チャットメッセージでの使用</p>
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <Loading
                 icon="zap"
@@ -121,14 +134,17 @@ export function LoadingDemo() {
             </div>
           </div>
           <div className="space-y-2">
-            <p className="text-sm font-medium">ボタン内での使用</p>
+            <p className="font-medium text-sm">ボタン内での使用</p>
             <div className="flex gap-3">
               <button
                 type="button"
                 className="flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-white"
                 disabled
               >
-                <LoadingSpinner size="sm" className="border-white border-t-transparent" />
+                <LoadingSpinner
+                  size="sm"
+                  className="border-white border-t-transparent"
+                />
                 送信中...
               </button>
               <button

@@ -1,56 +1,75 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useRef } from 'react'
-import { ChatMessage, type Message } from '~/components/chat-message'
-import { ChatInput } from '~/components/chat-input'
-import { FileUpload } from '~/components/file-upload'
-import { Progress } from '~/components/ui/progress'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card'
-import { Brain, FileText, MessageSquare } from 'lucide-react'
+import { Brain, FileText, Settings } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
+import { useAuth } from '~/components/auth/auth-provider';
+import { LogoutButton } from '~/components/auth/logout-button';
+import { ChatInput } from '~/components/chat-input';
+import { ChatMessage, type Message } from '~/components/chat-message';
+import { FileUpload } from '~/components/file-upload';
+import { TokenStatus } from '~/components/token-status';
+import { Button } from '~/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '~/components/ui/card';
+import { useTokenUsage } from '~/hooks/use-token-usage';
 
 interface PdfAnalysis {
-  originalText: string
-  analysis: string
-  wordCount: number
+  originalText: string;
+  analysis: string;
+  wordCount: number;
 }
 
 export default function Home() {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [pdfAnalysis, setPdfAnalysis] = useState<PdfAnalysis | null>(null)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [showPdfUpload, setShowPdfUpload] = useState(true)
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const [isUploading, setIsUploading] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const { user, isLoading } = useAuth();
+  const { tokenUsage, updateSessionUsage, resetSession } = useTokenUsage();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [pdfAnalysis, setPdfAnalysis] = useState<PdfAnalysis | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showPdfUpload, setShowPdfUpload] = useState(true);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // デバッグ情報
+  useEffect(() => {
+    console.log('メインページ認証状態:', { user, isLoading });
+  }, [user, isLoading]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    scrollToBottom();
+  }, [messages]);
 
   // 初期メッセージを設定
   useEffect(() => {
     const welcomeMessage: Message = {
       id: 'welcome',
       type: 'system',
-      content: 'AI画像問題回答システムへようこそ！\n\nまず教材や参考資料のPDFファイルをアップロードしてください。PDFの内容を分析した後、問題の画像を送信していただければ、PDFの内容を参考に回答いたします。',
-      timestamp: new Date()
-    }
-    setMessages([welcomeMessage])
-  }, [])
+      content:
+        'AI画像問題回答システムへようこそ！\n\nまず教材や参考資料のPDFファイルをアップロードしてください。PDFの内容を分析した後、問題の画像を送信していただければ、PDFの内容を参考に回答いたします。',
+      timestamp: new Date(),
+    };
+    setMessages([welcomeMessage]);
+  }, []);
 
   const createFileUrl = (file: File): string => {
-    return URL.createObjectURL(file)
-  }
+    return URL.createObjectURL(file);
+  };
 
   const handlePdfUpload = async (file: File) => {
-    setIsProcessing(true)
-    setIsUploading(true)
-    setUploadProgress(0)
-    
+    setIsProcessing(true);
+    setIsUploading(true);
+    setUploadProgress(0);
+
     // PDFアップロードメッセージを追加
     const uploadMessage: Message = {
       id: `pdf-${Date.now()}`,
@@ -59,9 +78,9 @@ export default function Home() {
       timestamp: new Date(),
       fileUrl: createFileUrl(file),
       fileName: file.name,
-      fileType: 'pdf'
-    }
-    setMessages(prev => [...prev, uploadMessage])
+      fileType: 'pdf',
+    };
+    setMessages((prev) => [...prev, uploadMessage]);
 
     // 分析中メッセージを追加
     const analysisMessage: Message = {
@@ -69,9 +88,9 @@ export default function Home() {
       type: 'assistant',
       content: '',
       timestamp: new Date(),
-      isLoading: true
-    }
-    setMessages(prev => [...prev, analysisMessage])
+      isLoading: true,
+    };
+    setMessages((prev) => [...prev, analysisMessage]);
 
     // プログレスバーのアニメーション（段階的に進捗を表示）
     const simulateProgress = () => {
@@ -81,119 +100,131 @@ export default function Home() {
           { progress: 45, delay: 500, message: 'PDFを解析中...' },
           { progress: 70, delay: 800, message: 'テキストを抽出中...' },
           { progress: 90, delay: 600, message: 'AI分析を実行中...' },
-          { progress: 100, delay: 400, message: '完了' }
-        ]
+          { progress: 100, delay: 400, message: '完了' },
+        ];
 
-        let currentStage = 0
-        
+        let currentStage = 0;
+
         const advanceProgress = () => {
           if (currentStage < stages.length) {
-            const stage = stages[currentStage]
-            setUploadProgress(stage.progress)
-            
+            const stage = stages[currentStage];
+            setUploadProgress(stage.progress);
+
             // 最後のステージでない場合は次のステージへ
             if (currentStage < stages.length - 1) {
-              currentStage++
-              setTimeout(advanceProgress, stage.delay)
+              currentStage++;
+              setTimeout(advanceProgress, stage.delay);
             } else {
-              setTimeout(resolve, stage.delay)
+              setTimeout(resolve, stage.delay);
             }
           }
-        }
-        
-        advanceProgress()
-      })
-    }
+        };
+
+        advanceProgress();
+      });
+    };
 
     try {
       // 進捗アニメーションを開始
-      const progressPromise = simulateProgress()
-      
-      const formData = new FormData()
-      formData.append('pdf', file)
-      
-      console.log('PDFアップロード開始:', file.name)
-      
+      const progressPromise = simulateProgress();
+
+      const formData = new FormData();
+      formData.append('pdf', file);
+
+      console.log('PDFアップロード開始:', file.name);
+
       const response = await fetch('/api/analyze-pdf', {
         method: 'POST',
         body: formData,
-      })
-      
-      console.log('APIレスポンス受信:', response.status, response.statusText)
-      
+      });
+
+      console.log('APIレスポンス受信:', response.status, response.statusText);
+
       // レスポンスのContent-Typeを確認
-      const contentType = response.headers.get('content-type')
-      console.log('Content-Type:', contentType)
-      
+      const contentType = response.headers.get('content-type');
+      console.log('Content-Type:', contentType);
+
       if (!contentType || !contentType.includes('application/json')) {
         // HTMLが返された場合のエラーハンドリング
-        const text = await response.text()
-        console.error('非JSONレスポンス:', text.substring(0, 500))
-        throw new Error(`サーバーエラーが発生しました (${response.status}). APIエンドポイントが正しく動作していない可能性があります。`)
+        const text = await response.text();
+        console.error('非JSONレスポンス:', text.substring(0, 500));
+        throw new Error(
+          `サーバーエラーが発生しました (${response.status}). APIエンドポイントが正しく動作していない可能性があります。`
+        );
       }
-      
-      const data = await response.json()
-      console.log('JSONパース完了:', data)
-      
+
+      const data = await response.json();
+      console.log('JSONパース完了:', data);
+
       // 進捗アニメーションの完了を待つ
-      await progressPromise
-      
+      await progressPromise;
+
       if (data.success) {
-        setPdfAnalysis(data)
-        setShowPdfUpload(false)
-        
+        // トークン使用量を更新（PDF解析時）
+        if (data.usage) {
+          updateSessionUsage(data.usage);
+        }
+
+        setPdfAnalysis(data);
+        setShowPdfUpload(false);
+
         // 分析完了メッセージに更新
-        setMessages(prev => prev.map(msg => 
-          msg.id === analysisMessage.id 
-            ? {
-                ...msg,
-                content: `PDFの分析が完了しました！\n\n📄 ファイル: ${file.name}\n📊 語数: ${data.wordCount}語\n\n解析された内容を基に、問題の画像を送信してください。画像の問題に対して詳細な回答を提供いたします。`,
-                isLoading: false
-              }
-            : msg
-        ))
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === analysisMessage.id
+              ? {
+                  ...msg,
+                  content: `PDFの分析が完了しました！\n\n📄 ファイル: ${file.name}\n📊 語数: ${data.wordCount}語\n\n解析された内容を基に、問題の画像を送信してください。画像の問題に対して詳細な回答を提供いたします。`,
+                  isLoading: false,
+                }
+              : msg
+          )
+        );
       } else {
-        const errorMessage = data.error || 'PDF解析に失敗しました'
-        const errorCode = data.code || 'UNKNOWN_ERROR'
-        const errorDetails = data.details ? `\n詳細: ${data.details}` : ''
-        
-        throw new Error(`${errorMessage} (${errorCode})${errorDetails}`)
+        const errorMessage = data.error || 'PDF解析に失敗しました';
+        const errorCode = data.code || 'UNKNOWN_ERROR';
+        const errorDetails = data.details ? `\n詳細: ${data.details}` : '';
+
+        throw new Error(`${errorMessage} (${errorCode})${errorDetails}`);
       }
     } catch (error) {
-      console.error('PDF upload error:', error)
-      
-      let errorMessage = 'PDFの解析中にエラーが発生しました。'
-      
+      console.error('PDF upload error:', error);
+
+      let errorMessage = 'PDFの解析中にエラーが発生しました。';
+
       if (error instanceof Error) {
         if (error.message.includes('<!DOCTYPE')) {
-          errorMessage += '\n\nサーバーエラーが発生しています。以下をご確認ください：\n• OpenAI API Keyが正しく設定されているか\n• 必要な依存関係がインストールされているか\n• 開発サーバーが正常に動作しているか'
+          errorMessage +=
+            '\n\nサーバーエラーが発生しています。以下をご確認ください：\n• OpenAI API Keyが正しく設定されているか\n• 必要な依存関係がインストールされているか\n• 開発サーバーが正常に動作しているか';
         } else {
-          errorMessage += `\n\n${error.message}`
+          errorMessage += `\n\n${error.message}`;
         }
       }
-      
+
       // エラーメッセージに更新
-      setMessages(prev => prev.map(msg => 
-        msg.id === analysisMessage.id 
-          ? {
-              ...msg,
-              content: errorMessage,
-              isLoading: false
-            }
-          : msg
-      ))
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === analysisMessage.id
+            ? {
+                ...msg,
+                content: errorMessage,
+                isLoading: false,
+              }
+            : msg
+        )
+      );
     } finally {
-      setIsProcessing(false)
-      setIsUploading(false)
-      setUploadProgress(0)
+      setIsProcessing(false);
+      setIsUploading(false);
+      setUploadProgress(0);
     }
-  }
+  };
 
   const handleSendMessage = async (message: string, file?: File) => {
-    if (!pdfAnalysis) return
+    if (!pdfAnalysis) return;
 
-    setIsProcessing(true)
-    
+    setIsProcessing(true);
+
     // ユーザーメッセージを追加
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -203,10 +234,10 @@ export default function Home() {
       ...(file && {
         fileUrl: createFileUrl(file),
         fileName: file.name,
-        fileType: 'image'
-      })
-    }
-    setMessages(prev => [...prev, userMessage])
+        fileType: 'image',
+      }),
+    };
+    setMessages((prev) => [...prev, userMessage]);
 
     // 処理中メッセージを追加
     const processingMessage: Message = {
@@ -214,132 +245,196 @@ export default function Home() {
       type: 'assistant',
       content: '',
       timestamp: new Date(),
-      isLoading: true
-    }
-    setMessages(prev => [...prev, processingMessage])
+      isLoading: true,
+    };
+    setMessages((prev) => [...prev, processingMessage]);
 
     try {
       if (file && file.type.startsWith('image/')) {
         // 画像問題の回答を取得
-        const formData = new FormData()
-        formData.append('image', file)
-        formData.append('pdfAnalysis', pdfAnalysis.analysis)
-        
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('pdfAnalysis', pdfAnalysis.analysis);
+
         const response = await fetch('/api/answer-question', {
           method: 'POST',
           body: formData,
-        })
-        
-        const data = await response.json()
-        
+        });
+
+        const data = await response.json();
+
         if (data.success) {
+          // トークン使用量を更新
+          if (data.usage) {
+            updateSessionUsage(data.usage);
+          }
+
           // 回答メッセージに更新
-          setMessages(prev => prev.map(msg => 
-            msg.id === processingMessage.id 
-              ? {
-                  ...msg,
-                  content: data.answer,
-                  isLoading: false
-                }
-              : msg
-          ))
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === processingMessage.id
+                ? {
+                    ...msg,
+                    content: data.answer,
+                    isLoading: false,
+                  }
+                : msg
+            )
+          );
         } else {
-          throw new Error(data.error || '問題回答に失敗しました')
+          throw new Error(data.error || '問題回答に失敗しました');
         }
       } else {
         // テキストのみの場合は、一般的な応答
-        setMessages(prev => prev.map(msg => 
-          msg.id === processingMessage.id 
-            ? {
-                ...msg,
-                content: 'ありがとうございます。問題の画像を添付していただければ、PDFの内容を参考に詳細な回答を提供いたします。',
-                isLoading: false
-              }
-            : msg
-        ))
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === processingMessage.id
+              ? {
+                  ...msg,
+                  content:
+                    'ありがとうございます。問題の画像を添付していただければ、PDFの内容を参考に詳細な回答を提供いたします。',
+                  isLoading: false,
+                }
+              : msg
+          )
+        );
       }
     } catch (error) {
-      console.error('Message processing error:', error)
-      
-      // エラーメッセージに更新
-      setMessages(prev => prev.map(msg => 
-        msg.id === processingMessage.id 
-          ? {
-              ...msg,
-              content: `エラーが発生しました。\n\n${error instanceof Error ? error.message : '不明なエラーが発生しました。'}`,
-              isLoading: false
-            }
-          : msg
-      ))
-    } finally {
-      setIsProcessing(false)
-    }
-  }
+      console.error('Message processing error:', error);
 
-  const resetChat = () => {
-    setMessages([])
-    setPdfAnalysis(null)
-    setShowPdfUpload(true)
-    setIsProcessing(false)
+      // エラーメッセージに更新
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === processingMessage.id
+            ? {
+                ...msg,
+                content: `エラーが発生しました。\n\n${error instanceof Error ? error.message : '不明なエラーが発生しました。'}`,
+                isLoading: false,
+              }
+            : msg
+        )
+      );
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleResetChat = () => {
+    setMessages([]);
+    setPdfAnalysis(null);
+    setShowPdfUpload(true);
+    setIsProcessing(false);
+    // セッション内のトークン使用量のみリセット（累計は保持）
+    resetSession();
+  };
+
+  // ローディング中は何も表示しない
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        <div className="text-center">
+          <Brain className="mx-auto mb-4 h-12 w-12 animate-pulse text-blue-500" />
+          <p className="text-gray-600">認証状態を確認中...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       {/* ヘッダー */}
-      <header className="backdrop-blur-sm bg-white/80 border-b border-white/20 shadow-sm">
-        <div className="max-w-6xl mx-auto px-6 py-4">
+      <header className="border-white/20 border-b bg-white/80 shadow-sm backdrop-blur-sm">
+        <div className="mx-auto max-w-6xl px-2 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="relative">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Brain className="w-6 h-6 text-white" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 shadow-lg">
+                  <Brain className="h-6 w-6 text-white" />
                 </div>
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white flex items-center justify-center">
-                  <div className="w-2 h-2 bg-white rounded-full"></div>
+                <div className="-top-1 -right-1 absolute flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-green-400">
+                  <div className="h-2 w-2 rounded-full bg-white"></div>
                 </div>
               </div>
-              <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                  AI 画像問題回答システム
-                </h1>
-                <p className="text-sm text-gray-600 flex items-center gap-2">
-                  <span className={`inline-block w-2 h-2 rounded-full ${pdfAnalysis ? 'bg-green-400' : 'bg-amber-400'}`}></span>
-                  {pdfAnalysis 
-                    ? `学習完了 • ${pdfAnalysis.wordCount.toLocaleString()}語のデータを分析済み`
-                    : 'PDFアップロード待ち'
-                  }
-                </p>
+              <div className="flex items-center gap-4">
+                <div>
+                  <h1 className="bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text font-bold text-transparent text-xl">
+                    AI 画像問題回答システム
+                  </h1>
+                  <p className="flex items-center gap-2 text-gray-600 text-sm">
+                    <span
+                      className={`inline-block h-2 w-2 rounded-full ${pdfAnalysis ? 'bg-green-400' : 'bg-amber-400'}`}
+                    ></span>
+                    {pdfAnalysis
+                      ? `学習完了 • ${pdfAnalysis.wordCount.toLocaleString()}語のデータを分析済み`
+                      : 'PDFアップロード待ち'}
+                  </p>
+                </div>
+                <TokenStatus
+                  usage={tokenUsage}
+                  maxTokensPerDay={50000}
+                  className="hidden md:flex"
+                />
               </div>
             </div>
-            
-            {pdfAnalysis && (
-              <button
-                onClick={resetChat}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-lg transition-all duration-200 border border-gray-200/50"
-              >
-                新しいセッション
-              </button>
-            )}
+
+            <div className="flex items-center gap-4">
+              {/* ユーザー情報表示 */}
+              {user && (
+                <div className="hidden items-center gap-3 md:flex">
+                  <div className="text-right">
+                    <p className="font-medium text-gray-700 text-sm">
+                      {user.name || user.email}
+                    </p>
+                    <p className="text-gray-500 text-xs">ログイン中</p>
+                  </div>
+                </div>
+              )}
+
+              {/* 設定ページリンク */}
+              <Link href="/settings">
+                <Button
+                  variant="outline"
+                  className="border-gray-200/50 hover:bg-white/50"
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  設定
+                </Button>
+              </Link>
+
+              {pdfAnalysis && (
+                <Button
+                  variant="default"
+                  onClick={handleResetChat}
+                  className="rounded-lg border border-gray-200/50 px-4 py-2 text-gray-600 text-sm transition-all duration-200 hover:bg-white/50 hover:text-gray-800"
+                >
+                  新しいセッション
+                </Button>
+              )}
+
+              {/* ログアウトボタン */}
+              <LogoutButton className="border-gray-200/50 hover:bg-white/50" />
+            </div>
           </div>
         </div>
       </header>
 
       {/* メインコンテンツ */}
-      <div className="flex flex-col max-w-6xl mx-auto w-full h-[calc(100vh-80px)]">
+      <div className="mx-auto flex h-[calc(100vh-80px)] w-full max-w-6xl flex-col">
         {/* PDFアップロード画面 */}
         {showPdfUpload && (
-          <div className="flex-1 flex items-center justify-center p-6">
+          <div className="flex flex-1 items-center justify-center p-6">
             <div className="w-full max-w-lg">
-              <Card className="border-0 shadow-2xl bg-white/70 backdrop-blur-sm">
-                <CardHeader className="text-center pb-4">
-                  <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
+              <Card className="border-0 bg-white/70 shadow-2xl backdrop-blur-sm">
+                <CardHeader className="pb-4 text-center">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 shadow-lg">
                     <FileText className="h-8 w-8 text-white" />
                   </div>
-                  <CardTitle className="text-2xl font-bold text-gray-900 mb-2">
+                  <CardTitle className="mb-2 font-bold text-2xl text-gray-900">
                     教材アップロード
                   </CardTitle>
-                  <CardDescription className="text-gray-600 text-base leading-relaxed">
-                    PDFファイルをアップロードして、AIが内容を分析します。<br />
+                  <CardDescription className="text-base text-gray-600 leading-relaxed">
+                    PDFファイルをアップロードして、AIが内容を分析します。
+                    <br />
                     その後、問題の画像を送信して詳細な回答を取得できます。
                   </CardDescription>
                 </CardHeader>
@@ -352,13 +447,13 @@ export default function Home() {
                     isUploading={isUploading}
                     uploadProgress={uploadProgress}
                   />
-                  <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
+                  <div className="mt-6 rounded-lg border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 p-4">
                     <div className="flex items-start gap-3">
-                      <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center mt-0.5">
-                        <span className="text-white text-xs font-bold">i</span>
+                      <div className="mt-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500">
+                        <span className="font-bold text-white text-xs">i</span>
                       </div>
-                      <div className="text-sm text-blue-800">
-                        <p className="font-medium mb-1">サポートしている形式</p>
+                      <div className="text-blue-800 text-sm">
+                        <p className="mb-1 font-medium">サポートしている形式</p>
                         <p>PDF形式のファイル（最大10MB）</p>
                       </div>
                     </div>
@@ -374,7 +469,7 @@ export default function Home() {
           <>
             {/* メッセージエリア */}
             <div className="flex-1 overflow-y-auto">
-              <div className="py-6 px-4">
+              <div className="px-4 py-6">
                 {messages.map((message) => (
                   <ChatMessage key={message.id} message={message} />
                 ))}
@@ -383,7 +478,7 @@ export default function Home() {
             </div>
 
             {/* 入力エリア */}
-            <div className="bg-white/70 backdrop-blur-sm border-t border-white/20">
+            <div className="border-white/20 border-t bg-white/70 backdrop-blur-sm">
               <ChatInput
                 onSendMessage={handleSendMessage}
                 disabled={isProcessing}
@@ -396,5 +491,5 @@ export default function Home() {
         )}
       </div>
     </div>
-  )
+  );
 }

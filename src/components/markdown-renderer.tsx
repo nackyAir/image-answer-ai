@@ -1,18 +1,16 @@
-'use client'
-
-import React from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import { cn } from '~/lib/utils'
-import type { Components } from 'react-markdown'
+'use client';
+import ReactMarkdown from 'react-markdown';
+import type { Components } from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { cn } from '~/lib/utils';
 
 interface MarkdownRendererProps {
-  content: string
-  className?: string
-  variant?: 'default' | 'chat'
+  content: string;
+  className?: string;
+  variant?: 'default' | 'chat';
 }
 
-type MarkdownVariant = NonNullable<MarkdownRendererProps['variant']>
+type MarkdownVariant = NonNullable<MarkdownRendererProps['variant']>;
 
 // テーマカラーの定義
 const THEME_COLORS = {
@@ -27,7 +25,7 @@ const THEME_COLORS = {
       card: 'bg-gray-100',
       code: 'bg-gray-800',
       quote: 'bg-blue-50',
-    }
+    },
   },
   chat: {
     primary: 'text-white',
@@ -40,58 +38,62 @@ const THEME_COLORS = {
       card: 'bg-white/20',
       code: 'bg-gray-900',
       quote: 'bg-white/10',
-    }
-  }
-} as const
+    },
+  },
+} as const;
 
 // スタイリングヘルパー関数
 const createThemeClasses = (variant: MarkdownVariant) => {
-  const theme = THEME_COLORS[variant]
-  
+  const theme = THEME_COLORS[variant];
+
   return {
     heading: (level: 1 | 2 | 3) => {
       const sizes = {
         1: 'text-xl font-bold mt-6 mb-4',
-        2: 'text-lg font-semibold mt-5 mb-3', 
-        3: 'text-base font-semibold mt-4 mb-2'
-      }
-      return cn(sizes[level], 'first:mt-0', theme.primary)
+        2: 'text-lg font-semibold mt-5 mb-3',
+        3: 'text-base font-semibold mt-4 mb-2',
+      };
+      return cn(sizes[level], 'first:mt-0', theme.primary);
     },
-    text: cn('mb-3 last:mb-0 leading-relaxed', theme.secondary),
-    list: cn('list-inside mb-3 space-y-1', theme.secondary),
+    text: cn('mb-3 leading-relaxed last:mb-0', theme.secondary),
+    list: cn('mb-3 list-inside space-y-1', theme.secondary),
     listItem: cn('leading-relaxed', theme.secondary),
     strong: cn('font-bold', theme.primary),
     emphasis: cn('italic', theme.muted),
     code: {
       inline: cn(
-        'px-2 py-1 rounded text-sm font-mono',
-        variant === 'chat' 
-          ? 'bg-white/20 text-blue-100 border border-white/30'
-          : 'bg-gray-100 text-blue-600 border border-gray-200'
+        'rounded px-2 py-1 font-mono text-sm',
+        variant === 'chat'
+          ? 'border border-white/30 bg-white/20 text-blue-100'
+          : 'border border-gray-200 bg-gray-100 text-blue-600'
       ),
       block: cn(
-        'overflow-x-auto rounded-b-lg p-4 text-sm font-mono',
-        variant === 'chat' ? 'bg-gray-900 text-gray-100' : theme.background.code + ' text-gray-100'
+        'overflow-x-auto rounded-b-lg p-4 font-mono text-sm',
+        variant === 'chat'
+          ? 'bg-gray-900 text-gray-100'
+          : theme.background.code + ' text-gray-100'
       ),
       header: cn(
-        'flex items-center justify-between px-4 py-2 rounded-t-lg text-sm',
-        variant === 'chat' ? 'bg-gray-800 text-gray-300' : theme.background.card + ' text-gray-600'
-      )
+        'flex items-center justify-between rounded-t-lg px-4 py-2 text-sm',
+        variant === 'chat'
+          ? 'bg-gray-800 text-gray-300'
+          : theme.background.card + ' text-gray-600'
+      ),
     },
     quote: cn(
-      'border-l-4 pl-4 my-4 italic py-3 rounded-r',
+      'my-4 rounded-r border-l-4 py-3 pl-4 italic',
       variant === 'chat'
         ? 'border-blue-300 bg-white/10 text-blue-100'
         : 'border-blue-400 bg-blue-50 text-blue-800'
     ),
     link: cn(
       'underline transition-colors duration-200',
-      variant === 'chat' 
+      variant === 'chat'
         ? 'text-blue-200 hover:text-blue-100'
         : 'text-blue-600 hover:text-blue-800'
     ),
     divider: cn(
-      'my-6 border-0 h-px',
+      'my-6 h-px border-0',
       variant === 'chat' ? 'bg-white/30' : 'bg-gray-300'
     ),
     table: {
@@ -104,20 +106,22 @@ const createThemeClasses = (variant: MarkdownVariant) => {
           ? 'bg-white/20 text-white'
           : theme.background.card + ' text-gray-900'
       ),
-      td: cn('border px-3 py-2', theme.border, theme.secondary)
-    }
-  }
-}
+      td: cn('border px-3 py-2', theme.border, theme.secondary),
+    },
+  };
+};
 
 // 言語判定ヘルパー関数（letを使用しない）
-const extractLanguageFromClassName = (className: string | undefined): string => {
-  const match = className?.match(/language-(\w+)/)
-  return match?.[1] ?? ''
-}
+const extractLanguageFromClassName = (
+  className: string | undefined
+): string => {
+  const match = className?.match(/language-(\w+)/);
+  return match?.[1] ?? '';
+};
 
 // カスタムコンポーネント群
 const createMarkdownComponents = (variant: MarkdownVariant): Components => {
-  const classes = createThemeClasses(variant)
+  const classes = createThemeClasses(variant);
 
   return {
     h1: ({ children, ...props }) => (
@@ -125,13 +129,13 @@ const createMarkdownComponents = (variant: MarkdownVariant): Components => {
         {children}
       </h1>
     ),
-    
+
     h2: ({ children, ...props }) => (
       <h2 className={classes.heading(2)} {...props}>
         {children}
       </h2>
     ),
-    
+
     h3: ({ children, ...props }) => (
       <h3 className={classes.heading(3)} {...props}>
         {children}
@@ -149,13 +153,13 @@ const createMarkdownComponents = (variant: MarkdownVariant): Components => {
         {children}
       </ul>
     ),
-    
+
     ol: ({ children, ...props }) => (
       <ol className={cn(classes.list, 'list-decimal')} {...props}>
         {children}
       </ol>
     ),
-    
+
     li: ({ children, ...props }) => (
       <li className={classes.listItem} {...props}>
         {children}
@@ -167,7 +171,7 @@ const createMarkdownComponents = (variant: MarkdownVariant): Components => {
         {children}
       </strong>
     ),
-    
+
     em: ({ children, ...props }) => (
       <em className={classes.emphasis} {...props}>
         {children}
@@ -175,15 +179,15 @@ const createMarkdownComponents = (variant: MarkdownVariant): Components => {
     ),
 
     code: ({ children, className, ...props }) => {
-      const language = extractLanguageFromClassName(className)
-      const isCodeBlock = Boolean(language)
+      const language = extractLanguageFromClassName(className);
+      const isCodeBlock = Boolean(language);
 
       if (!isCodeBlock) {
         return (
           <code className={classes.code.inline} {...props}>
             {children}
           </code>
-        )
+        );
       }
 
       return (
@@ -196,7 +200,7 @@ const createMarkdownComponents = (variant: MarkdownVariant): Components => {
             <code>{children}</code>
           </pre>
         </div>
-      )
+      );
     },
 
     blockquote: ({ children, ...props }) => (
@@ -217,9 +221,7 @@ const createMarkdownComponents = (variant: MarkdownVariant): Components => {
       </a>
     ),
 
-    hr: ({ ...props }) => (
-      <hr className={classes.divider} {...props} />
-    ),
+    hr: ({ ...props }) => <hr className={classes.divider} {...props} />,
 
     table: ({ children, ...props }) => (
       <div className={classes.table.container}>
@@ -228,41 +230,40 @@ const createMarkdownComponents = (variant: MarkdownVariant): Components => {
         </table>
       </div>
     ),
-    
+
     th: ({ children, ...props }) => (
       <th className={classes.table.th} {...props}>
         {children}
       </th>
     ),
-    
+
     td: ({ children, ...props }) => (
       <td className={classes.table.td} {...props}>
         {children}
       </td>
     ),
-  }
-}
+  };
+};
 
-export function MarkdownRenderer({ 
-  content, 
+export function MarkdownRenderer({
+  content,
   className,
-  variant = 'default' 
+  variant = 'default',
 }: MarkdownRendererProps) {
-  const components = createMarkdownComponents(variant)
-  const isChat = variant === 'chat'
+  const components = createMarkdownComponents(variant);
+  const isChat = variant === 'chat';
 
   return (
-    <div className={cn(
-      "prose prose-sm max-w-none",
-      isChat && "prose-invert",
-      className
-    )}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={components}
-      >
+    <div
+      className={cn(
+        'prose prose-sm max-w-none',
+        isChat && 'prose-invert',
+        className
+      )}
+    >
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {content}
       </ReactMarkdown>
     </div>
-  )
-} 
+  );
+}
